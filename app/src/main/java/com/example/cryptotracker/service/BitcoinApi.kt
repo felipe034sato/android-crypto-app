@@ -8,5 +8,4 @@ interface BitcoinApi {
 
     @GET("api/BTC/ticker/")
     suspend fun getBitcoinData(): Response<CoinResponse>
-
 }

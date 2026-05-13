@@ -9,7 +9,6 @@ import com.example.cryptotracker.service.ApiFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -19,63 +18,81 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val buttonUpdate = findViewById<Button>(R.id.btn_update)
+        val btnUpdate = findViewById<Button>(R.id.btn_update)
+        val txtValue = findViewById<TextView>(R.id.txt_value)
+        val txtDate = findViewById<TextView>(R.id.txt_date)
 
-        buttonUpdate.setOnClickListener {
-            loadBitcoinInfo()
-        }
-    }
+        btnUpdate.setOnClickListener {
 
-    private fun loadBitcoinInfo() {
+            txtValue.text = "Carregando..."
+            txtDate.text = "Carregando..."
 
-        CoroutineScope(Dispatchers.Main).launch {
+            CoroutineScope(Dispatchers.Main).launch {
 
-            try {
+                try {
 
-                val service = ApiFactory().createService()
-                val response = service.getBitcoinData()
+                    val service = ApiFactory().createService()
+                    val response = service.getBitcoinData()
 
-                if (response.isSuccessful) {
+                    if (response.isSuccessful) {
 
-                    val result = response.body()
+                        val result = response.body()
+                        val ticker = result?.ticker
 
-                    val txtValue = findViewById<TextView>(R.id.txt_value)
-                    val txtDate = findViewById<TextView>(R.id.txt_date)
+                        if (ticker != null) {
 
-                    val currentValue = result?.ticker?.last?.toDoubleOrNull()
+                            val lastValue = ticker.last?.toDoubleOrNull()
 
-                    if (currentValue != null) {
+                            txtValue.text = lastValue?.let {
+                                "R$ %.2f".format(it)
+                            } ?: "Valor inválido"
 
-                        val format =
-                            NumberFormat.getCurrencyInstance(Locale("pt", "BR"))
+                            val date = Date(ticker.date * 1000L)
 
-                        txtValue.text = format.format(currentValue)
+                            val formatter = SimpleDateFormat(
+                                "dd/MM/yyyy HH:mm:ss",
+                                Locale.getDefault()
+                            )
+
+                            txtDate.text = formatter.format(date)
+
+                        } else {
+
+                            txtValue.text = "Sem dados"
+                            txtDate.text = ""
+
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Resposta vazia da API",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
+
+                    } else {
+
+                        txtValue.text = "Erro API"
+                        txtDate.text = ""
+
+                        Toast.makeText(
+                            this@MainActivity,
+                            "HTTP: ${response.code()}",
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
 
-                    val date =
-                        result?.ticker?.date?.let { Date(it * 1000L) }
+                } catch (e: Exception) {
 
-                    val formatter =
-                        SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault())
+                    e.printStackTrace()
 
-                    txtDate.text = formatter.format(date!!)
-
-                } else {
+                    txtValue.text = "EXCEPTION: ${e.javaClass.simpleName}"
+                    txtDate.text = ""
 
                     Toast.makeText(
                         this@MainActivity,
-                        "Erro ao buscar dados",
+                        e.toString(),
                         Toast.LENGTH_LONG
                     ).show()
                 }
-
-            } catch (e: Exception) {
-
-                Toast.makeText(
-                    this@MainActivity,
-                    "Falha: ${e.message}",
-                    Toast.LENGTH_LONG
-                ).show()
             }
         }
     }
